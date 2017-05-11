@@ -33,7 +33,7 @@ AddOption('--netx',
           choices=atPickNetxForBuild_All,
           action='append',
           metavar='NETX',
-          help='Select the platforms to build the flasher for.')
+          help='Select the platforms to build for.')
 atPickNetxForBuild = GetOption('atPickNetxForBuild')
 if atPickNetxForBuild is None:
     atPickNetxForBuild = atPickNetxForBuild_All
@@ -53,7 +53,7 @@ Import('atEnv')
 
 
 # Create a build environment for the ARM9 based netX chips.
-env_arm9 = atEnv.DEFAULT.CreateEnvironment(['gcc-arm-none-eabi-4.7', 'asciidoc', 'exoraw-2.0.7_2'])
+env_arm9 = atEnv.DEFAULT.CreateEnvironment(['gcc-arm-none-eabi-4.7', 'asciidoc'])
 if 'NETX500' in atPickNetxForBuild:
     env_arm9.CreateCompilerEnv('NETX500', ['arch=armv5te'])
 if 'NETX56' in atPickNetxForBuild:
@@ -64,12 +64,12 @@ if 'NETX10' in atPickNetxForBuild:
     env_arm9.CreateCompilerEnv('NETX10', ['arch=armv5te'])
 
 # Create a build environment for the Cortex-R7 and Cortex-A9 based netX chips.
-env_cortexR7 = atEnv.DEFAULT.CreateEnvironment(['gcc-arm-none-eabi-4.9', 'asciidoc', 'exoraw-2.0.7_2'])
+env_cortexR7 = atEnv.DEFAULT.CreateEnvironment(['gcc-arm-none-eabi-4.9', 'asciidoc'])
 if 'NETX4000_RELAXED' in atPickNetxForBuild:
     env_cortexR7.CreateCompilerEnv('NETX4000_RELAXED', ['arch=armv7', 'thumb'], ['arch=armv7-r', 'thumb'])
 
 # Create a build environment for the Cortex-M4 based netX chips.
-env_cortexM4 = atEnv.DEFAULT.CreateEnvironment(['gcc-arm-none-eabi-4.9', 'asciidoc', 'exoraw-2.0.7_2'])
+env_cortexM4 = atEnv.DEFAULT.CreateEnvironment(['gcc-arm-none-eabi-4.9', 'asciidoc'])
 if 'NETX90_MPW' in atPickNetxForBuild:
     env_cortexM4.CreateCompilerEnv('NETX90_MPW', ['arch=armv7', 'thumb'], ['arch=armv7e-m', 'thumb'])
 
@@ -108,30 +108,17 @@ if 'NETX90_MPW' in atPickNetxForBuild:
 
 #----------------------------------------------------------------------------
 #
-# Provide a function to build a flasher binary.
+# Provide a function to build a binary.
 #
-def flasher_build(strFlasherName, tEnv, strBuildPath, astrSources):
+def build_elf_bin(strName, tEnv, strBuildPath, astrSources):
 	# Get the platform library.
 	tLibPlatform = tEnv['PLATFORM_LIBRARY']
 
-	## Create the list of known SPI flashes.
-	#srcSpiFlashes = tEnv.SPIFlashes(os.path.join(strBuildPath, 'spi_flash_types', 'spi_flash_types.c'), 'src/spi_flash_types.xml')
-	#objSpiFlashes = tEnv.Object(os.path.join(strBuildPath, 'spi_flash_types', 'spi_flash_types.o'), srcSpiFlashes[0])
-	## Extract the binary.
-	#binSpiFlashes = tEnv.ObjCopy(os.path.join(strBuildPath, 'spi_flash_types', 'spi_flash_types.bin'), objSpiFlashes)
-	## Pack the binary with exomizer.
-	#exoSpiFlashes = tEnv.Exoraw(os.path.join(strBuildPath, 'spi_flash_types', 'spi_flash_types.exo'), binSpiFlashes)
-	## Convert the packed binary to an object.
-	#objExoSpiFlashes = tEnv.ObjImport(os.path.join(strBuildPath, 'spi_flash_types', 'spi_flash_types_exo.o'), exoSpiFlashes)
-    #
-	## Append the path to the SPI flash list.
-	#tEnv.Append(CPPPATH = [os.path.join(strBuildPath, 'spi_flash_types')])
+	tSrc = tEnv.SetBuildPath(strBuildPath, 'src', astrSources)
+	tElf = tEnv.Elf(os.path.join(strBuildPath, strName+'.elf'), tSrc + [tLibPlatform])
+	tBin = tEnv.ObjCopy(os.path.join(strBuildPath, strName+'.bin'), tElf)
 
-	tSrcFlasher = tEnv.SetBuildPath(strBuildPath, 'src', astrSources)
-	tElfFlasher = tEnv.Elf(os.path.join(strBuildPath, strFlasherName+'.elf'), tSrcFlasher + [tLibPlatform])
-	tBinFlasher = tEnv.ObjCopy(os.path.join(strBuildPath, strFlasherName+'.bin'), tElfFlasher)
-
-	return tElfFlasher,tBinFlasher
+	return tElf,tBin
 
 
 
@@ -142,7 +129,7 @@ def flasher_build(strFlasherName, tEnv, strBuildPath, astrSources):
 if 'NETX90_MPW' in atPickNetxForBuild:
     env_netx90_mpw_sqitest = env_netx90_mpw_default.Clone()
     env_netx90_mpw_sqitest.Append(CPPDEFINES = [['CFG_DEBUGMSG', '0']])
-    elf_netx90_mpw_sqitest,bin_netx90_mpw_sqitest = flasher_build('netx90_mpw_sqi_test', env_netx90_mpw_sqitest, 'targets/netx90_mpw_sqi_test', sources_netx90_mpw_sqi_test)
+    elf_netx90_mpw_sqitest,bin_netx90_mpw_sqitest = build_elf_bin('netx90_mpw_sqi_test', env_netx90_mpw_sqitest, 'targets/netx90_mpw_sqi_test', sources_netx90_mpw_sqi_test)
 
 #----------------------------------------------------------------------------
 #
@@ -158,124 +145,8 @@ tEnv = env_netx90_mpw_sqitest
 tElf = elf_netx90_mpw_sqitest
 lua_sqitest = tEnv.GccSymbolTemplate('targets/lua/sqitest.lua', tElf, GCCSYMBOLTEMPLATE_TEMPLATE='templates/sqitest.lua')
 
-#----------------------------------------------------------------------------
-#
-# Build the documentation.
-#
-
-#tDocSpiFlashTypesHtml = atEnv.DEFAULT.XSLT('targets/doc/spi_flash_types.html', ['src/spi_flash_types.xml', 'src/spi_flash_types_html.xsl'])
-#tDocSpiFlashListTxt = atEnv.DEFAULT.XSLT('targets/doc/spi_flash_types.txt', ['src/spi_flash_types.xml', 'src/spi_flash_types_txt.xsl'])
-#
-#
-## Get the default attributes.
-#aAttribs = atEnv.DEFAULT['ASCIIDOC_ATTRIBUTES']
-## Add some custom attributes.
-#aAttribs.update(dict({
-#    # Use ASCIIMath formulas.
-#    'asciimath': True,
-#
-#    # Embed images into the HTML file as data URIs.
-#    'data-uri': True,
-#
-#    # Use icons instead of text for markers and callouts.
-#    'icons': True,
-#
-#    # Use numbers in the table of contents.
-#    'numbered': True,
-#
-#    # Generate a scrollable table of contents on the left of the text.
-#    'toc2': True,
-#
-#    # Use 4 levels in the table of contents.
-#    'toclevels': 4
-#}))
-#
-#doc = atEnv.DEFAULT.Asciidoc('targets/doc/flasher.html', 'doc/flasher.asciidoc', ASCIIDOC_BACKEND='html5', ASCIIDOC_ATTRIBUTES=aAttribs)
-
-
-#----------------------------------------------------------------------------
-#
-# Build the artifact.
-#
 if fBuildIsFull==True:
-#    strGroup = 'org.muhkuh.tools'
-#    strModule = 'sqitest'
-#
-#    # Split the group by dots.
-#    aGroup = strGroup.split('.')
-#    # Build the path for all artifacts.
-#    strModulePath = 'targets/jonchki/repository/%s/%s/%s' % ('/'.join(aGroup), strModule, PROJECT_VERSION)
-#
-#
-#    strArtifact = 'lua5.1-flasher'
-#
-#    tArcList = atEnv.DEFAULT.ArchiveList('zip')
-#
-#    tArcList.AddFiles('netx/',
-#        bin_netx4000_relaxed_nodbg,
-#        bin_netx90_mpw_nodbg)
-#		
-#    tArcList.AddFiles('netx/debug/',
-#        bin_netx4000_relaxed_dbg,
-#        bin_netx90_mpw_dbg)
-#		
-#    tArcList.AddFiles('doc/',
-#        doc,
-#        tDocSpiFlashTypesHtml,
-#        tDocSpiFlashListTxt)
-#
-#    tArcList.AddFiles('lua/',
-#        lua_flasher,
-#        'lua/flasher_test.lua')
-#
-#    tArcList.AddFiles('demo/',
-#        'lua/cli_flash.lua',
-#        'lua/demo_getBoardInfo.lua',
-#        'lua/erase_complete_flash.lua',
-#        'lua/erase_first_flash_sector.lua',
-#        'lua/erase_first_flash_sector_intflash0.lua',
-#        'lua/erase_first_flash_sector_intflash1.lua',
-#        'lua/erase_first_flash_sector_intflash2.lua',
-#        'lua/flash_intflash0.lua',
-#        'lua/flash_intflash1.lua',
-#        'lua/flash_intflash2.lua',
-#        'lua/flash_parflash.lua',
-#        'lua/flash_serflash.lua',
-#        'lua/get_erase_areas_parflash.lua',
-#        'lua/identify_intflash0.lua',
-#        'lua/identify_parflash.lua',
-#        'lua/identify_serflash.lua',
-#        'lua/is_erased_parflash.lua',
-#        'lua/read_bootimage.lua',
-#        'lua/read_bootimage_intflash0.lua',
-#        'lua/read_bootimage_intflash2.lua',
-#        'lua/read_complete_flash.lua',
-#        tDemoShowEraseAreas)
-#
-#    tArcList.AddFiles('',
-#        'jonchki/%s.%s/install.lua' % (strGroup, strModule))
-#
-#    strBasePath = os.path.join(strModulePath, '%s-%s' % (strArtifact, PROJECT_VERSION))
-#    tArtifactZip = atEnv.DEFAULT.Archive('%s.zip' % strBasePath, None, ARCHIVE_CONTENTS = tArcList)
-#    tArtifactXml = atEnv.DEFAULT.Version('%s.xml' % strBasePath, 'jonchki/%s.%s/%s.xml' % (strGroup, strModule, strArtifact))
-#    tArtifactPom = atEnv.DEFAULT.ArtifactVersion('%s.pom' % strBasePath, 'jonchki/%s.%s/pom.xml' % (strGroup, strModule))
-#
-#    # Create the SHA1 sums for the ZIP and XML.
-#    atEnv.DEFAULT.Hash('%s.zip.sha1' % strBasePath, tArtifactZip)
-#    atEnv.DEFAULT.Hash('%s.xml.sha1' % strBasePath, tArtifactXml)
-#
-#    #----------------------------------------------------------------------------
-#    #
-#    # Prepare the build folders for the other artifacts.
-#    #
-#    Command('targets/jonchki/flasher_cli/flasher_cli.lua',            'jonchki/org.muhkuh.tools.flasher_cli/flasher_cli.lua',            Copy("$TARGET", "$SOURCE"))
-#    Command('targets/jonchki/flasher_cli/jonchkicfg.xml',             'jonchki/jonchkicfg.xml',                                          Copy("$TARGET", "$SOURCE"))
-#    Command('targets/jonchki/flasher_cli/jonchkisys_windows_32.cfg',  'jonchki/org.muhkuh.tools.flasher_cli/jonchkisys_windows_32.cfg',  Copy("$TARGET", "$SOURCE"))
-#    Command('targets/jonchki/flasher_cli/jonchkisys_windows_64.cfg',  'jonchki/org.muhkuh.tools.flasher_cli/jonchkisys_windows_64.cfg',  Copy("$TARGET", "$SOURCE"))
-#
-#    atEnv.DEFAULT.Version('targets/jonchki/flasher_cli/flasher_cli.xml', 'jonchki/org.muhkuh.tools.flasher_cli/flasher_cli.xml')
-#
-#
+
     #----------------------------------------------------------------------------
     #
     # Make a local demo installation.
