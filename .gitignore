@@ -1,0 +1,5 @@
+/targets
+/.sconsign.dblite
+/scons.bat
+/scons.sh
+/site_scons
