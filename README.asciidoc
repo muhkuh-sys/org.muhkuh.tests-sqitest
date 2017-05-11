@@ -1,0 +1,23 @@
+SQI Test
+========
+
+== About
+
+The SQI test is a test for the Quad SPI/SQI unit on netX SOCs.
+
+Currently, only the netX 90 with Winbond W25Q32 flash is supported.
+
+The test reads the JEDEC ID of the device in 1 bit SPI mode and checks it against the expected value. 
+Then, it enables the 4 bit QPI mode, reads the ID again and compares it to the expected response, which is different in QPI mode.
+
+The test is a netX console application. The Muhkuh test framework is used to download and execute it.
+
+
+== Infrastructure
+
+This chapter describes the current infrastructure of the project.
+
+The flasher source code is hosted on GitHub: https://github.com/muhkuh-sys/org.muhkuh.tests-sqitest
+
+Issues are collected here: https://github.com/muhkuh-sys/org.muhkuh.test-sqitest/issues
+
