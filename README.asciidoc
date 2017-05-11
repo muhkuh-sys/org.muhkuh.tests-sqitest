@@ -19,5 +19,5 @@ This chapter describes the current infrastructure of the project.
 
 The flasher source code is hosted on GitHub: https://github.com/muhkuh-sys/org.muhkuh.tests-sqitest
 
-Issues are collected here: https://github.com/muhkuh-sys/org.muhkuh.test-sqitests/issues
+Issues are collected here: https://github.com/muhkuh-sys/org.muhkuh.tests-sqitest/issues
 
